@@ -2,6 +2,8 @@ import logging
 import random
 from typing import List
 
+import safetensors
+import safetensors.torch
 import torch
 from torch.utils.data import Dataset
 
@@ -12,29 +14,17 @@ class BaseDataset(Dataset):
     """
     Base class for the datasets.
 
-    Given a proper index (list[dict]), allows to process different datasets
+    Given a proper index (HuggingFace Dataset), allows to process different datasets
     for the same task in the identical manner. Therefore, to work with
     several datasets, the user only have to define index in a nested class.
     """
 
     def __init__(
-        self, index, limit=None, shuffle_index=False, instance_transforms=None
+        self, index, limit=None, shuffle_index=False, instance_transforms=None, columns=("img", "label")
     ):
-        """
-        Args:
-            index (list[dict]): list, containing dict for each element of
-                the dataset. The dict has required metadata information,
-                such as label and object path.
-            limit (int | None): if not None, limit the total number of elements
-                in the dataset to 'limit' elements.
-            shuffle_index (bool): if True, shuffle the index. Uses python
-                random package with seed 42.
-            instance_transforms (dict[Callable] | None): transforms that
-                should be applied on the instance. Depend on the
-                tensor name.
-        """
+        self.labels = columns
+        self.cols = len(columns)
         self._assert_index_is_valid(index)
-
         index = self._shuffle_and_limit_index(index, limit, shuffle_index)
         self._index: List[dict] = index
 
@@ -56,11 +46,10 @@ class BaseDataset(Dataset):
                 (a single dataset element).
         """
         data_dict = self._index[ind]
-        data_path = data_dict["path"]
-        data_object = self.load_object(data_path)
-        data_label = data_dict["label"]
+        instance_data = dict()
+        for i in range(self.cols):
+            instance_data[self.labels[i]] = data_dict[self.labels[i]]
 
-        instance_data = {"data_object": data_object, "labels": data_label}
         instance_data = self.preprocess_data(instance_data)
 
         return instance_data
@@ -70,18 +59,6 @@ class BaseDataset(Dataset):
         Get length of the dataset (length of the index).
         """
         return len(self._index)
-
-    def load_object(self, path):
-        """
-        Load object from disk.
-
-        Args:
-            path (str): path to the object.
-        Returns:
-            data_object (Tensor):
-        """
-        data_object = torch.load(path)
-        return data_object
 
     def preprocess_data(self, instance_data):
         """
@@ -116,13 +93,13 @@ class BaseDataset(Dataset):
         the __init__ before shuffling and limiting.
 
         Args:
-            index (list[dict]): list, containing dict for each element of
+            index (Dataset): HuggingFace Dataset, containing dict for each element of
                 the dataset. The dict has required metadata information,
-                such as label and object path.
+                such as label and image.
         Returns:
-            index (list[dict]): list, containing dict for each element of
-                the dataset that satisfied the condition. The dict has
-                required metadata information, such as label and object path.
+            index (Dataset): HuggingFace Dataset, containing dict for each element of
+                the dataset. The dict has required metadata information,
+                such as label and image.
         """
         # Filter logic
         pass
@@ -134,17 +111,17 @@ class BaseDataset(Dataset):
         conditions.
 
         Args:
-            index (list[dict]): list, containing dict for each element of
+            index (Dataset): HuggingFace Dataset, containing dict for each element of
                 the dataset. The dict has required metadata information,
-                such as label and object path.
+                such as label and image.
         """
         for entry in index:
-            assert "path" in entry, (
-                "Each dataset item should include field 'path'" " - path to audio file."
+            assert "lensless" in entry, (
+                "Each dataset item should include field 'lensless'" " - noisy image."
             )
-            assert "label" in entry, (
-                "Each dataset item should include field 'label'"
-                " - object ground-truth label."
+            assert "lensed" in entry, (
+                "Each dataset item should include field 'lensless'"
+                " - object ground-truth image."
             )
 
     @staticmethod
@@ -156,15 +133,15 @@ class BaseDataset(Dataset):
         the __init__ before shuffling and limiting and after filtering.
 
         Args:
-            index (list[dict]): list, containing dict for each element of
+            index (Dataset): HuggingFace Dataset, containing dict for each element of
                 the dataset. The dict has required metadata information,
-                such as label and object path.
+                such as label and image.
         Returns:
-            index (list[dict]): sorted list, containing dict for each element
-                of the dataset. The dict has required metadata information,
-                such as label and object path.
+            index (Dataset): HuggingFace Dataset, containing dict for each element of
+                the dataset. The dict has required metadata information,
+                such as label and image.
         """
-        return sorted(index, key=lambda x: x["KEY_FOR_SORTING"])
+        return index.sort("KEY_FOR_SORTING")
 
     @staticmethod
     def _shuffle_and_limit_index(index, limit, shuffle_index):
@@ -172,18 +149,17 @@ class BaseDataset(Dataset):
         Shuffle elements in index and limit the total number of elements.
 
         Args:
-            index (list[dict]): list, containing dict for each element of
+            index (Dataset): HuggingFace Dataset, containing dict for each element of
                 the dataset. The dict has required metadata information,
-                such as label and object path.
+                such as label and image.
             limit (int | None): if not None, limit the total number of elements
                 in the dataset to 'limit' elements.
             shuffle_index (bool): if True, shuffle the index. Uses python
                 random package with seed 42.
         """
         if shuffle_index:
-            random.seed(42)
-            random.shuffle(index)
+            index = index.shuffle(seed=42)
 
         if limit is not None:
-            index = index[:limit]
+            index = index.select(range(limit))
         return index
