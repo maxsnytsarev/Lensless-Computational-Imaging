@@ -38,7 +38,7 @@ class BaseDataset(Dataset):
         instance_transforms=None,
         columns=("img", "label"),
     ):
-        self.labels = columns
+        self.columns = columns
         self.repo = repo
         self.cols = len(columns)
         self._assert_index_is_valid(index)
@@ -66,7 +66,7 @@ class BaseDataset(Dataset):
         data_dict = self._index[ind]
         instance_data = dict()
         for i in range(self.cols):
-            instance_data[self.labels[i]] = data_dict[self.labels[i]]
+            instance_data[self.columns[i]] = data_dict[self.columns[i]]
         assert "mask_label" in instance_data.keys()
         m_label = instance_data["mask_label"]
         if not m_label in self.mask_cashe.keys():

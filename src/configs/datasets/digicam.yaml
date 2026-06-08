@@ -1,10 +1,16 @@
 train:
   _target_: src.datasets.DigiCamDataset
   dataset_name: "bezzam/DigiCam-Mirflickr-MultiMask-10K"
-  columns: ("lensless", "lensed", "mask_label"),
+  columns:
+    - lensless
+    - lensed
+    - mask_label
   split: "train"
 test:
   _target_: src.datasets.DigiCamDataset
   dataset_name: "bezzam/DigiCam-Mirflickr-MultiMask-10K"
-  columns: ("lensless", "lensed", "mask_label"),
+  columns:
+    - lensless
+    - lensed
+    - mask_label
   split: "test"

@@ -1,9 +1,9 @@
 _target_: src.model.FullModel
 input_channels: 3
 mode:
-  - true
-  - true
+  - false
+  - false
 trainable: true
 h: 380
 w: 507
-k: 5
+k: 20
