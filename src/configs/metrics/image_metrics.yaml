@@ -1,0 +1,15 @@
+device: "auto"
+train: []
+inference:
+  - _target_: src.metrics.MSEMetric
+    device: ${metrics.device}
+    name: "MSE"
+  - _target_: src.metrics.LPIPSMetric
+    device: ${metrics.device}
+    name: "LPIPS"
+  - _target_: src.metrics.PSNRMetric
+    device: ${metrics.device}
+    name: "PSNR"
+  - _target_: src.metrics.SSIMMetric
+    device: ${metrics.device}
+    name: "SSIM"

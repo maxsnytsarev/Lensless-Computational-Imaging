@@ -1,0 +1,54 @@
+admm_100:
+  - _target_: src.model.FullModel
+    input_channels: 3
+    mode: (False, False)
+    trainable: False
+    h: 380
+    w: 507
+    k: 100
+
+unrolled_admm_20:
+  - _target_: src.model.FullModel
+    input_channels: 3
+    mode: (False, False)
+    trainable: True
+    h: 380
+    w: 507
+    k: 20
+
+
+le_admm_5_inv:
+  - _target_: src.model.FullModel
+    input_channels: 3
+    mode: (False, False)
+    trainable: True
+    h: 380
+    w: 507
+    k: 5
+
+le_admm_5_pre_inv:
+  - _target_: src.model.FullModel
+    input_channels: 3
+    mode: (True, False)
+    trainable: True
+    h: 380
+    w: 507
+    k: 5
+
+le_admm_5_post_inv:
+  - _target_: src.model.FullModel
+    input_channels: 3
+    mode: (False, True)
+    trainable: True
+    h: 380
+    w: 507
+    k: 5
+
+le_admm_5_pre_post_inv:
+  - _target_: src.model.FullModel
+    input_channels: 3
+    mode: (True, True)
+    trainable: True
+    h: 380
+    w: 507
+    k: 5
