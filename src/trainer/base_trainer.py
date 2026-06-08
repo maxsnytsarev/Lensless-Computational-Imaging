@@ -473,7 +473,7 @@ class BaseTrainer:
             "epoch": epoch,
             "state_dict": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "lr_scheduler": self.lr_scheduler.state_dict(),
+            "lr_scheduler": self.lr_scheduler.state_dict() if self.lr_scheduler is not None else None,
             "monitor_best": self.mnt_best,
             "config": self.config,
         }
