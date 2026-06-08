@@ -28,9 +28,15 @@ class FullModel(nn.Module):
         self.w = w
         self.input_channels = input_channels
         self.parts = nn.ModuleList()
-        self.pre_process = DRUNet(input_channels=input_channels, channels=(32, 64, 128, 256))
+        if self.mode[0]:
+            self.pre_process = DRUNet(input_channels=input_channels, channels=(32, 64, 128, 256))
+        else:
+            self.pre_process = None
         self.image_inverse = Le_ADMM(h=h, w=w, trainable=trainable, k=k)
-        self.post_process = DRUNet(input_channels=input_channels, channels=(32, 64, 128, 256))
+        if self.mode[1]:
+            self.post_process = DRUNet(input_channels=input_channels, channels=(32, 64, 128, 256))
+        else:
+            self.post_process = None
 
     def forward(self, lensless, psf, **batch):
         if self.mode[0]:

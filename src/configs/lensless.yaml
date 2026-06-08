@@ -22,7 +22,7 @@ trainer:
   log_step: 5
   n_epochs: 25
   epoch_len: 500
-  device_tensors: ["lensless", "lens", "psf"] # which tensors should be on device (ex. GPU)
+  device_tensors: ["lensless", "lensed", "psf"] # which tensors should be on device (ex. GPU)
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
   device: auto # device name or "auto"
   override: False # if True, will override the previous run with the same name

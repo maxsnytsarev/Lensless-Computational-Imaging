@@ -12,6 +12,6 @@ class ImageLoss(nn.Module):
     def forward(self, lensed: torch.Tensor, reconstructed: torch.Tensor, **batch):
         reconstructed = get_roi_bchw(reconstructed)
         lensed = get_roi_bchw(lensed)
-        lpips_loss = self.loss_lpips(2*reconstructed-1, 2*lensed-1).mean()
+        lpips_loss = self.loss_lpips(reconstructed, lensed).mean()
         mse = self.mse(reconstructed, lensed)
         return {"loss": mse + lpips_loss, "loss_mse": mse, "loss_lpips": lpips_loss}

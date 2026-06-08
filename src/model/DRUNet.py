@@ -105,15 +105,15 @@ class DRUNet(nn.Module):
         x3 = self.conv4(x3)
         y = self.res4(x3)
 
-        y += x3
+        y = y + x3
         y = self.conv5(y)
         y = self.res5(y)
 
-        y += x2
+        y = y + x2
         y = self.conv6(y)
         y = self.res6(y)
 
-        y += x1
+        y = y + x1
         y = self.conv7(y)
         y = self.res7(y)
 

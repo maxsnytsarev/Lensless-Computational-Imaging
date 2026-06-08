@@ -52,6 +52,11 @@ def center_pad(x, H_pad, W_pad, h, w):
     padded_x = F.pad(x, padding, mode="constant", value=0)
     return padded_x
 
+def to_log(x):
+    x = torch.tensor(x)
+    return torch.log(torch.exp(x) - 1)
+def back_from_log(x):
+    return torch.log(1 + torch.exp(x))
 
 class ADMM_Layer(nn.Module):
     def __init__(self, h, w, trainable):
@@ -83,44 +88,54 @@ class ADMM_Layer(nn.Module):
         )
         self.register_buffer("dy_fft", dy_fft)
         if trainable:
-            self.mu1 = nn.Parameter(torch.tensor(1e-4))
-            self.mu2 = nn.Parameter(torch.tensor(1e-4))
-            self.mu3 = nn.Parameter(torch.tensor(1e-4))
-            self.tau = nn.Parameter(torch.tensor(2e-4))
+            self.mu1_ = nn.Parameter(to_log(1e-4))
+            self.mu2_ = nn.Parameter(to_log(1e-4))
+            self.mu3_ = nn.Parameter(to_log(1e-4))
+            self.tau_ = nn.Parameter(to_log(2e-4))
         else:
-            self.mu1 = 1e-4
-            self.mu2 = 1e-4
-            self.mu3 = 1e-4
-            self.tau = 2e-4
+            self.mu1_ = 1e-4
+            self.mu2_ = 1e-4
+            self.mu3_ = 1e-4
+            self.tau_ = 2e-4
 
     def forward(self, a1, a2, a3, x, b, H_fft):
         if self.trainable:
-            u = soft_thresholding(self.tau, psi(x) + a2 / self.mu2)
+            mu1 = back_from_log(self.mu1_) + 1e-6
+            mu2 = back_from_log(self.mu2_) + 1e-6
+            mu3 = back_from_log(self.mu3_) + 1e-6
+            tau = back_from_log(self.tau_) + 1e-6
         else:
-            u = soft_thresholding(self.tau / self.mu2, psi(x) + a2 / self.mu2)
+            mu1 = self.mu1_
+            mu2 = self.mu2_
+            mu3 = self.mu3_
+            tau = self.tau_
+        if self.trainable:
+            u = soft_thresholding(tau, psi(x) + a2 / mu2)
+        else:
+            u = soft_thresholding(tau / mu2, psi(x) + a2 / mu2)
         v = (
             a1
-            + self.mu1 * Hx(H_fft, x)
+            + mu1 * Hx(H_fft, x)
             + center_pad(b, self.H_pad, self.W_pad, self.h, self.w)
         )
-        v = v / (self.CTC + self.mu1).unsqueeze(0).unsqueeze(0)
-        w = torch.where(a3 / self.mu3 + x > 0, a3 / self.mu3 + x, torch.zeros_like(x))
+        v = v / (self.CTC + mu1).unsqueeze(0).unsqueeze(0)
+        w = torch.where(a3 / mu3 + x > 0, a3 / mu3 + x, torch.zeros_like(x))
         r = (
-            (self.mu3 * w - a3)
-            + psiT(self.mu2 * u - a2)
-            + HTx(H_fft, self.mu1 * v - a1)
+            (mu3 * w - a3)
+            + psiT(mu2 * u - a2)
+            + HTx(H_fft, mu1 * v - a1)
         )
         denom = (
-            self.mu1 * torch.abs(H_fft) ** 2
-            + self.mu2 * (torch.abs(self.dx_fft) ** 2 + torch.abs(self.dy_fft) ** 2)
-            + self.mu3
+            mu1 * torch.abs(H_fft) ** 2
+            + mu2 * (torch.abs(self.dx_fft) ** 2 + torch.abs(self.dy_fft) ** 2)
+            + mu3
         )
         x_new = torch.fft.ifft2(
-            torch.fft.fft2(r, dim=(-2, -1)) / denom, dim=(-2, -1)
+            torch.fft.fft2(r, dim=(-2, -1)) / (denom + 1e-6), dim=(-2, -1)
         ).real
-        a1_new = a1 + self.mu1 * (Hx(H_fft, x_new) - v)
-        a2_new = a2 + self.mu2 * (psi(x_new) - u)
-        a3_new = a3 + self.mu3 * (x_new - w)
+        a1_new = a1 + mu1 * (Hx(H_fft, x_new) - v)
+        a2_new = a2 + mu2 * (psi(x_new) - u)
+        a3_new = a3 + mu3 * (x_new - w)
         return a1_new, a2_new, a3_new, x_new
 
 
