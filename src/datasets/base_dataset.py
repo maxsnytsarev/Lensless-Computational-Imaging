@@ -75,11 +75,11 @@ class BaseDataset(Dataset):
                 repo_type="dataset",
                 filename=f"masks/mask_{m_label}.npy",
             )
-            instance_data["mask"] = np.load(path)
+            mask = np.load(path)
             my_lensed, my_lensless, my_psf = get_dataset_object(
                 instance_data["lensed"],
                 instance_data["lensless"],
-                instance_data["mask"],
+                mask,
             )
             my_lensed = to_shape(my_lensed)
             my_lensless = to_shape(my_lensless)
@@ -87,9 +87,9 @@ class BaseDataset(Dataset):
             instance_data["lensed"] = my_lensed
             instance_data["lensless"] = my_lensless
             instance_data["psf"] = my_psf
-            self.mask_cashe[m_label] = (instance_data["mask"], my_psf)
+            self.mask_cashe[m_label] = (mask, my_psf)
         else:
-            instance_data["mask"] = self.mask_cashe[m_label][0]
+            mask = self.mask_cashe[m_label][0]
             my_lensed, my_lensless = get_image_only(
                 instance_data["lensed"], instance_data["lensless"]
             )

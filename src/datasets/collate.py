@@ -16,10 +16,15 @@ def collate_fn(dataset_items: list[dict]):
 
     result_batch = {}
 
-    # example of collate_fn
-    result_batch["data_object"] = torch.vstack(
-        [elem["data_object"] for elem in dataset_items]
+    result_batch["lensed"] = torch.stack(
+        [elem["lensed"] for elem in dataset_items], dim=0
     )
-    result_batch["labels"] = torch.tensor([elem["labels"] for elem in dataset_items])
+    result_batch["lensless"] = torch.stack(
+        [elem["lensless"] for elem in dataset_items], dim=0
+    )
+    result_batch["psf"] = torch.stack(
+        [elem["psf"] for elem in dataset_items], dim=0
+    )
+    result_batch["mask_label"] = torch.tensor([elem["mask_label"] for elem in dataset_items])
 
     return result_batch
