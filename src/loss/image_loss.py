@@ -14,4 +14,4 @@ class ImageLoss(nn.Module):
         lensed = get_roi_bchw(lensed)
         lpips_loss = self.loss_lpips(reconstructed, lensed).mean()
         mse = self.mse(reconstructed, lensed)
-        return {"loss": mse + lpips_loss, "loss_mse": mse, "loss_lpips": lpips_loss}
+        return {"loss": mse + lpips_loss / 10, "loss_mse": mse, "loss_lpips": lpips_loss / 10}
