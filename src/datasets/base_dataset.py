@@ -2,12 +2,22 @@ import logging
 import random
 from typing import List
 
+import numpy as np
 import safetensors
 import safetensors.torch
 import torch
+from huggingface_hub import hf_hub_download
 from torch.utils.data import Dataset
 
+from lensless_helpers.preprocessor import get_dataset_object, get_image_only, get_roi
+
 logger = logging.getLogger(__name__)
+
+
+def to_shape(x):
+    x = x.squeeze(0)
+    x = x.permute(2, 0, 1)
+    return x
 
 
 class BaseDataset(Dataset):
@@ -20,12 +30,20 @@ class BaseDataset(Dataset):
     """
 
     def __init__(
-        self, index, limit=None, shuffle_index=False, instance_transforms=None, columns=("img", "label")
+        self,
+        index,
+        repo="bezzam/DigiCam-Mirflickr-MultiMask-10K",
+        limit=None,
+        shuffle_index=False,
+        instance_transforms=None,
+        columns=("img", "label"),
     ):
         self.labels = columns
+        self.repo = repo
         self.cols = len(columns)
         self._assert_index_is_valid(index)
         index = self._shuffle_and_limit_index(index, limit, shuffle_index)
+        self.mask_cashe = dict()
         self._index: List[dict] = index
 
         self.instance_transforms = instance_transforms
@@ -49,7 +67,35 @@ class BaseDataset(Dataset):
         instance_data = dict()
         for i in range(self.cols):
             instance_data[self.labels[i]] = data_dict[self.labels[i]]
-
+        assert "mask_label" in instance_data.keys()
+        m_label = instance_data["mask_label"]
+        if not m_label in self.mask_cashe.keys():
+            path = hf_hub_download(
+                repo_id=self.repo,
+                repo_type="dataset",
+                filename=f"masks/mask_{m_label}.npy",
+            )
+            instance_data["mask"] = np.load(path)
+            my_lensed, my_lensless, my_psf = get_dataset_object(
+                instance_data["lensed"],
+                instance_data["lensless"],
+                instance_data["mask"],
+            )
+            my_lensed = to_shape(my_lensed)
+            my_lensless = to_shape(my_lensless)
+            my_psf = to_shape(my_psf)
+            instance_data["lensed"] = my_lensed
+            instance_data["lensless"] = my_lensless
+            instance_data["psf"] = my_psf
+            self.mask_cashe[m_label] = (instance_data["mask"], my_psf)
+        else:
+            instance_data["mask"] = self.mask_cashe[m_label][0]
+            my_lensed, my_lensless = get_image_only(
+                instance_data["lensed"], instance_data["lensless"]
+            )
+            instance_data["lensed"] = to_shape(my_lensed)
+            instance_data["lensless"] = to_shape(my_lensless)
+            instance_data["psf"] = self.mask_cashe[m_label][1]
         instance_data = self.preprocess_data(instance_data)
 
         return instance_data
@@ -123,6 +169,9 @@ class BaseDataset(Dataset):
                 "Each dataset item should include field 'lensless'"
                 " - object ground-truth image."
             )
+            assert (
+                "mask_label" in entry
+            ), "Each dataset item should include field 'mask_label'"
 
     @staticmethod
     def _sort_index(index):
