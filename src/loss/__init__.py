@@ -1,1 +1,1 @@
-from src.loss.example import ExampleLoss
+from src.loss.image_loss import ImageLoss
