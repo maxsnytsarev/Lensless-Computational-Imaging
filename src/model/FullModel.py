@@ -19,6 +19,9 @@ def pad_(x):
 def crop(x, h_true, w_true):
     return x[:, :, :h_true, :w_true]
 
+def psf_correction(psf):
+    return psf / (psf.sum() + 1e-6)
+
 class FullModel(nn.Module):
     def __init__(self, k, input_channels=3, mode=(False, False), trainable=False, h=380, w=507):
         super().__init__()
@@ -43,6 +46,8 @@ class FullModel(nn.Module):
             lensless = pad_(lensless)
             lensless = self.pre_process(lensless)
             lensless = crop(lensless, self.h, self.w)
+        else:
+            psf = psf_correction(psf)
         reconstructed = self.image_inverse(lensless, psf)
         if self.mode[1]:
             reconstructed = pad_(reconstructed)

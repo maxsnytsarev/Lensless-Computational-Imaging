@@ -1,6 +1,7 @@
 import torch
 from tqdm.auto import tqdm
 
+from pathlib import Path
 from src.metrics.tracker import MetricTracker
 from src.trainer.base_trainer import BaseTrainer
 import torch.nn.functional as F
@@ -127,6 +128,8 @@ class Inferencer(BaseTrainer):
             x = F.interpolate(x.unsqueeze(0), (orig_h, orig_w), mode="bilinear", align_corners=False).squeeze(0)
             return x
 
+        def crop_(x, orig_h, orig_w):
+            return x[:, :orig_h, :orig_w]
         batch = self.move_batch_to_device(batch)
         batch = self.transform_batch(batch)  # transform batch on device -- faster
 
@@ -167,7 +170,7 @@ class Inferencer(BaseTrainer):
             if lensed_exist:
                 output["lensed"] = lensed
 
-            cur_path = self.save_path / part
+            cur_path = self.save_path
             cur_path.mkdir(parents=True, exist_ok=True)
 
             if self.save_path is not None:
@@ -176,9 +179,12 @@ class Inferencer(BaseTrainer):
                 path_to_save.mkdir(parents=True, exist_ok=True)
 
                 torchvision.utils.save_image(back_to_hw(output["lensless"], orig_h, orig_w), path_to_save / f"lensless.png")
-                torchvision.utils.save_image(get_roi_bchw(back_to_hw(output["lensless"], orig_h, orig_w).unsqueeze(0)).squeeze(0),
-                                             path_to_save / f"lensless_roi.png")
-                torchvision.utils.save_image(back_to_hw(output["reconstructed"], orig_h, orig_w), path_to_save / f"reconstructed.png")
+                if lensed_exist:
+                    lensed_orig_hw = batch["lensed_orig_hw"][i].clone()
+                    lensed_orig_h, lensed_orig_w = lensed_orig_hw[0], lensed_orig_hw[1]
+                    torchvision.utils.save_image(get_roi_bchw(crop_(output["lensed"], lensed_orig_h, lensed_orig_w).unsqueeze(0)).squeeze(0),
+                                                 path_to_save / f"lensed_roi.png")
+
                 torchvision.utils.save_image(get_roi_bchw(back_to_hw(output["reconstructed"], orig_h, orig_w).unsqueeze(0)).squeeze(0),
                                              path_to_save / f"reconstructed_roi.png")
 
@@ -202,7 +208,7 @@ class Inferencer(BaseTrainer):
 
         # create Save dir
         if self.save_path is not None:
-            (self.save_path / part).mkdir(exist_ok=True, parents=True)
+            Path(self.save_path).mkdir(exist_ok=True, parents=True)
 
         with torch.no_grad():
             for batch_idx, batch in tqdm(

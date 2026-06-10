@@ -13,6 +13,19 @@ def pad_crop(x, H, W):
         x = F.interpolate(x.unsqueeze(0), size=(H, W), mode="bilinear", align_corners=False).squeeze(0)
     return x
 
+def to_int(x):
+    if torch.is_tensor(x):
+        return int(x.item())
+    return int(x)
+
+def pad_(x, H_max, W_max):
+    H_max, W_max = to_int(H_max), to_int(W_max)
+    c, h, w = x.shape
+    pad_right = W_max - w
+    pad_bottom = H_max - h
+    x = F.pad(x, (0, pad_right, 0, pad_bottom), mode='constant', value=0)
+    return x
+
 def collate_fn(dataset_items: list[dict]):
     """
     Collate and pad fields in the dataset items.
@@ -29,12 +42,8 @@ def collate_fn(dataset_items: list[dict]):
     result_batch = {}
     H = 380
     W = 507
-    if dataset_items[0]["lensed"] is None:
-        result_batch["lensed"] = [None] * len(dataset_items)
-    else:
-        result_batch["lensed"] = torch.stack(
-            [pad_crop(elem["lensed"], H, W) for elem in dataset_items], dim=0
-        )
+    H_max = max([elem["lensed"].shape[1] for elem in dataset_items])
+    W_max = max([elem["lensed"].shape[2] for elem in dataset_items])
     result_batch["lensless"] = torch.stack(
         [pad_crop(elem["lensless"], H, W) for elem in dataset_items], dim=0
     )
@@ -46,5 +55,14 @@ def collate_fn(dataset_items: list[dict]):
             [[elem["orig_h"], elem["orig_w"]] for elem in dataset_items]
         )
     if "id" in dataset_items[0]:
+        if dataset_items[0]["lensed"] is None:
+            result_batch["lensed"] = [None] * len(dataset_items)
+        else:
+            result_batch["lensed_orig_hw"] = torch.tensor(
+                [[elem["lensed"].shape[1], elem["lensed"].shape[2]] for elem in dataset_items]
+            )
+            result_batch["lensed"] = torch.stack(
+                [pad_(elem["lensed"], H_max, W_max) for elem in dataset_items], dim=0
+            )
         result_batch["id"] = [elem["id"] for elem in dataset_items]
     return result_batch
