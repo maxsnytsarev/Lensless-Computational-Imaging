@@ -8,6 +8,7 @@ from src.datasets.data_utils import get_dataloaders
 from src.trainer import Inferencer
 from src.utils.init_utils import set_random_seed
 from src.utils.io_utils import ROOT_PATH
+from huggingface_hub import hf_hub_download
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -35,13 +36,18 @@ def main(config):
 
     # build model architecture, then print to console
     model = instantiate(config.model).to(device)
+    check = hf_hub_download(repo_id = "maxsnytsarev/lensless_camera", filename=config.inferencer.model_weights, repo_type="model")
+    checkpoint = torch.load(check, map_location=device, weights_only=False)
+    state_dict = checkpoint["state_dict"]
+    model.load_state_dict(state_dict)
+
     print(model)
 
     # get metrics
     metrics = instantiate(config.metrics)
 
     # save_path for model predictions
-    save_path = ROOT_PATH / "data" / "saved" / config.inferencer.save_path
+    save_path = ROOT_PATH / "inference_data" / "saved" / config.inferencer.save_path
     save_path.mkdir(exist_ok=True, parents=True)
 
     inferencer = Inferencer(
@@ -52,7 +58,7 @@ def main(config):
         batch_transforms=batch_transforms,
         save_path=save_path,
         metrics=metrics,
-        skip_model_load=False,
+        skip_model_load=True,
     )
 
     logs = inferencer.run_inference()

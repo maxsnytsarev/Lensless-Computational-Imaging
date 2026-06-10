@@ -3,7 +3,9 @@ from tqdm.auto import tqdm
 
 from src.metrics.tracker import MetricTracker
 from src.trainer.base_trainer import BaseTrainer
-
+import torch.nn.functional as F
+import torchvision.utils
+from lensless_helpers.preprocessor import get_roi_bchw
 
 class Inferencer(BaseTrainer):
     """
@@ -116,39 +118,69 @@ class Inferencer(BaseTrainer):
                 the dataloader (possibly transformed via batch transform)
                 and model outputs.
         """
+
+        def back_to_hw(x, orig_h, orig_w, h=380, w=507):
+            if orig_h == h and orig_w == w:
+                return x
+            if orig_h <= h and orig_w <= w:
+                return x[:, :orig_h, :orig_w]
+            x = F.interpolate(x.unsqueeze(0), (orig_h, orig_w), mode="bilinear", align_corners=False).squeeze(0)
+            return x
+
         batch = self.move_batch_to_device(batch)
         batch = self.transform_batch(batch)  # transform batch on device -- faster
 
         outputs = self.model(**batch)
         batch.update(outputs)
+        lensed = batch["lensed"][0]
+        lensed_exist = False
+        if lensed is not None:
+            lensed_exist = True
 
-        if metrics is not None:
+        if metrics is not None and lensed_exist:
             for met in self.metrics["inference"]:
                 metrics.update(met.name, met(**batch))
 
         # Some saving logic. This is an example
         # Use if you need to save predictions on disk
 
-        batch_size = batch["logits"].shape[0]
-        current_id = batch_idx * batch_size
+        batch_size = batch["lensless"].shape[0]
 
         for i in range(batch_size):
             # clone because of
             # https://github.com/pytorch/pytorch/issues/1995
-            logits = batch["logits"][i].clone()
-            label = batch["labels"][i].clone()
-            pred_label = logits.argmax(dim=-1)
-
-            output_id = current_id + i
+            cur_id = batch["id"][i]
+            orig_hw = batch["orig_hw"][i].clone()
+            orig_h, orig_w = orig_hw[0], orig_hw[1]
+            reconstructed = batch["reconstructed"][i].clone()
+            lensless = batch["lensless"][i].clone()
+            psf = batch["psf"][i].clone()
+            lensed = batch["lensed"][i]
+            if lensed is not None:
+                lensed = batch["lensed"][i].clone()
 
             output = {
-                "pred_label": pred_label,
-                "label": label,
+                "reconstructed": reconstructed,
+                "lensless": lensless,
+                "psf": psf
             }
+            if lensed_exist:
+                output["lensed"] = lensed
+
+            cur_path = self.save_path / part
+            cur_path.mkdir(parents=True, exist_ok=True)
 
             if self.save_path is not None:
                 # you can use safetensors or other lib here
-                torch.save(output, self.save_path / part / f"output_{output_id}.pth")
+                path_to_save = cur_path / cur_id
+                path_to_save.mkdir(parents=True, exist_ok=True)
+
+                torchvision.utils.save_image(back_to_hw(output["lensless"], orig_h, orig_w), path_to_save / f"lensless.png")
+                torchvision.utils.save_image(get_roi_bchw(back_to_hw(output["lensless"], orig_h, orig_w).unsqueeze(0)).squeeze(0),
+                                             path_to_save / f"lensless_roi.png")
+                torchvision.utils.save_image(back_to_hw(output["reconstructed"], orig_h, orig_w), path_to_save / f"reconstructed.png")
+                torchvision.utils.save_image(get_roi_bchw(back_to_hw(output["reconstructed"], orig_h, orig_w).unsqueeze(0)).squeeze(0),
+                                             path_to_save / f"reconstructed_roi.png")
 
         return batch
 

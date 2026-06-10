@@ -91,4 +91,12 @@ def get_image_only(lensed, lensless):
     lensed = torch.from_numpy(lensed)
 
     return lensed, lensless
+
+
+def no_lensed_get(lensless, mask_vals):
+    lensless = convert_image_to_float(force_rgb(np.array(lensless)))
+    # lensless image is upside-down
+    lensless = torch.rot90(torch.from_numpy(lensless), dims=(-3, -2), k=2)
+    psf = simulate_psf_from_mask(mask_vals)
+    return lensless, psf
     

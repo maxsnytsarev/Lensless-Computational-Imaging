@@ -1,13 +1,22 @@
 defaults:
-  - model: baseline
-  - metrics: example
-  - datasets: example_eval # we do not want to run inference on training data
-  - dataloader: example
-  - transforms: example
+  - model: lensless
+  - writer: cometml
+  - metrics: image_metrics
+  - dataloader: inference
   - _self_
+
 inferencer:
-  device_tensors: ["data_object", "labels"] # which tensors should be on device (ex. GPU)
-  device: auto # device name or "auto"
-  save_path: "example" # any name here, can be a dataset name
+  device_tensors: ["lensless", "psf"]
+  device: auto
+  save_path: "inference_save"
   seed: 1
-  from_pretrained: "saved/model_best.pth" # path to the pretrained model
+  model_weights: "model_weights_le_admm_pre_pro_inv.pth"
+
+datasets:
+  inference:
+    _target_: src.datasets.CustomDirDataset
+    path: inference_dataset
+
+transforms:
+  instance_transforms: {}
+  batch_transforms: {}
