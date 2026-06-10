@@ -42,8 +42,6 @@ def collate_fn(dataset_items: list[dict]):
     result_batch = {}
     H = 380
     W = 507
-    H_max = max([elem["lensed"].shape[1] for elem in dataset_items])
-    W_max = max([elem["lensed"].shape[2] for elem in dataset_items])
     result_batch["lensless"] = torch.stack(
         [pad_crop(elem["lensless"], H, W) for elem in dataset_items], dim=0
     )
@@ -54,15 +52,28 @@ def collate_fn(dataset_items: list[dict]):
         result_batch["orig_hw"] = torch.tensor(
             [[elem["orig_h"], elem["orig_w"]] for elem in dataset_items]
         )
+    else:
+        result_batch["orig_hw"] = torch.tensor(
+            [[elem["lensless"].shape[1], elem["lensless"].shape[2]] for elem in dataset_items]
+        )
+    if dataset_items[0]["lensed"] is None:
+        result_batch["lensed"] = [None] * len(dataset_items)
+    else:
+        result_batch["lensed_orig_hw"] = torch.tensor(
+            [[elem["lensed"].shape[1], elem["lensed"].shape[2]] for elem in dataset_items]
+        )
+        H_max = max([elem["lensed"].shape[1] for elem in dataset_items])
+        W_max = max([elem["lensed"].shape[2] for elem in dataset_items])
+        result_batch["lensed"] = torch.stack(
+            [pad_(elem["lensed"], H_max, W_max) for elem in dataset_items], dim=0
+        )
+    if "id" not in dataset_items[0]:
+        result_batch["lensed"] = torch.stack(
+            [elem["lensed"] for elem in dataset_items], dim=0
+        )
     if "id" in dataset_items[0]:
-        if dataset_items[0]["lensed"] is None:
-            result_batch["lensed"] = [None] * len(dataset_items)
-        else:
-            result_batch["lensed_orig_hw"] = torch.tensor(
-                [[elem["lensed"].shape[1], elem["lensed"].shape[2]] for elem in dataset_items]
-            )
-            result_batch["lensed"] = torch.stack(
-                [pad_(elem["lensed"], H_max, W_max) for elem in dataset_items], dim=0
-            )
+
         result_batch["id"] = [elem["id"] for elem in dataset_items]
+    else:
+        result_batch["id"] = [f"ImageID{i}" for i in range(len(dataset_items))]
     return result_batch
