@@ -26,6 +26,7 @@ class Inferencer(BaseTrainer):
         save_path,
         metrics=None,
         batch_transforms=None,
+        writer=None,
         skip_model_load=False,
     ):
         """
@@ -61,7 +62,7 @@ class Inferencer(BaseTrainer):
 
         self.model = model
         self.batch_transforms = batch_transforms
-
+        self.writer = writer
         # define dataloaders
         self.evaluation_dataloaders = {k: v for k, v in dataloaders.items()}
 
@@ -74,7 +75,7 @@ class Inferencer(BaseTrainer):
         if self.metrics is not None:
             self.evaluation_metrics = MetricTracker(
                 *[m.name for m in self.metrics["inference"]],
-                writer=None,
+                writer=writer
             )
         else:
             self.evaluation_metrics = None
@@ -135,20 +136,44 @@ class Inferencer(BaseTrainer):
 
         outputs = self.model(**batch)
         batch.update(outputs)
+        if self.writer is not None:
+            self.writer.set_step(batch_idx, part)
+
         lensed = batch["lensed"][0]
         lensed_exist = False
         if lensed is not None:
             lensed_exist = True
 
         if metrics is not None and lensed_exist:
+            batch_metrics = {}
+
             for met in self.metrics["inference"]:
+                value = met(**batch)
                 metrics.update(met.name, met(**batch))
+                batch_metrics[met.name] = value
+            if self.writer is not None:
+                self.writer.add_scalars(batch_metrics)
 
         # Some saving logic. This is an example
         # Use if you need to save predictions on disk
 
         batch_size = batch["lensless"].shape[0]
 
+        def get_log(x, is_lensless, is_psf):
+            if not is_psf:
+                if is_lensless:
+                    x = x.detach().cpu().numpy().transpose(1, 2, 0)
+                    return x
+                else:
+                    x = get_roi_bchw(x.unsqueeze(0)).squeeze(0).detach().cpu().numpy().transpose(1, 2, 0)
+                    return x
+            else:
+                x = x.detach().cpu()
+                x = x.clone() / (x.abs().max() + 1e-8)
+                x = x.numpy().transpose(1, 2, 0)
+                return x
+
+        log_images_every = 5
         for i in range(batch_size):
             # clone because of
             # https://github.com/pytorch/pytorch/issues/1995
@@ -187,6 +212,29 @@ class Inferencer(BaseTrainer):
 
                 torchvision.utils.save_image(get_roi_bchw(back_to_hw(output["reconstructed"], orig_h, orig_w).unsqueeze(0)).squeeze(0),
                                              path_to_save / f"reconstructed_roi.png")
+                if self.writer is not None and batch_idx % log_images_every == 0:
+                    lensless_log = back_to_hw(output["lensless"], orig_h, orig_w)
+                    lensless_log = get_log(lensless_log, True, False)
+
+                    reconstructed_log = back_to_hw(output["reconstructed"], orig_h, orig_w)
+                    reconstructed_log = get_log(reconstructed_log, False, False)
+
+                    psf_log = output["psf"]
+                    psf_log = get_log(psf_log, False, True)
+
+                    mode = part
+                    self.writer.add_image(f"{mode}/lensless", lensless_log)
+                    self.writer.add_image(f"{mode}/PSF", psf_log)
+                    self.writer.add_image(f"{mode}/reconstructed_roi", reconstructed_log)
+
+                    if lensed_exist:
+                        lensed_orig_hw = batch["lensed_orig_hw"][i].clone()
+                        lensed_orig_h, lensed_orig_w = lensed_orig_hw[0], lensed_orig_hw[1]
+                        lensed_log = crop_(output["lensed"], lensed_orig_h, lensed_orig_w)
+                        lensed_log = get_log(lensed_log, False, False)
+                        self.writer.add_image(f"{mode}/lensed_roi", lensed_log)
+
+
 
         return batch
 
@@ -203,7 +251,6 @@ class Inferencer(BaseTrainer):
 
         self.is_train = False
         self.model.eval()
-
         self.evaluation_metrics.reset()
 
         # create Save dir
@@ -223,4 +270,10 @@ class Inferencer(BaseTrainer):
                     metrics=self.evaluation_metrics,
                 )
 
-        return self.evaluation_metrics.result()
+        result = self.evaluation_metrics.result()
+
+        if self.writer is not None:
+            self.writer.set_step(0, part)
+            self.writer.add_scalars(result)
+
+        return result

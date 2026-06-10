@@ -1,0 +1,23 @@
+defaults:
+  - model: admm_100
+  - datasets: digicam-test
+  - dataloader: inference
+  - writer: cometml
+  - metrics: image_metrics
+  - _self_
+
+trainer:
+  save_dir: saved
+  resume_from: null
+  override: False
+
+inferencer:
+  device_tensors: ["lensless", "lensed", "psf"]
+  device: auto
+  save_path: "admm_100"
+  seed: 1
+  model_weights: null
+
+transforms:
+  instance_transforms: {}
+  batch_transforms: {}

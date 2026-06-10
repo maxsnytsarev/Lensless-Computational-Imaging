@@ -9,6 +9,9 @@ from src.trainer import Inferencer
 from src.utils.init_utils import set_random_seed
 from src.utils.io_utils import ROOT_PATH
 from huggingface_hub import hf_hub_download
+from omegaconf import OmegaConf
+
+from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -33,13 +36,21 @@ def main(config):
     # setup data_loader instances
     # batch_transforms should be put on device
     dataloaders, batch_transforms = get_dataloaders(config, device)
-
+    project_config = OmegaConf.to_container(config)
+    logger = setup_saving_and_logging(config)
+    if config.writer is not None:
+        writer = instantiate(config.writer, logger, project_config)
+    else:
+        writer = None
     # build model architecture, then print to console
     model = instantiate(config.model).to(device)
-    check = hf_hub_download(repo_id = "maxsnytsarev/lensless_camera", filename=config.inferencer.model_weights, repo_type="model")
-    checkpoint = torch.load(check, map_location=device, weights_only=False)
-    state_dict = checkpoint["state_dict"]
-    model.load_state_dict(state_dict)
+    if config.inferencer.get("model_weights") is not None:
+        check = hf_hub_download(repo_id = "maxsnytsarev/lensless_camera", filename=config.inferencer.model_weights, repo_type="model")
+        checkpoint = torch.load(check, map_location=device, weights_only=False)
+        state_dict = checkpoint["state_dict"]
+        model.load_state_dict(state_dict)
+    else:
+        print("No weights are loaded. Using initialized model.")
 
     print(model)
 
@@ -58,6 +69,7 @@ def main(config):
         batch_transforms=batch_transforms,
         save_path=save_path,
         metrics=metrics,
+        writer=writer,
         skip_model_load=True,
     )
 

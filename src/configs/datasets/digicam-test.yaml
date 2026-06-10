@@ -1,0 +1,8 @@
+inference:
+  _target_: src.datasets.DigiCamDataset
+  dataset_name: "bezzam/DigiCam-Mirflickr-MultiMask-10K"
+  columns:
+    - lensless
+    - lensed
+    - mask_label
+  split: "test"
