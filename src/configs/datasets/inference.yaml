@@ -1,0 +1,3 @@
+inference:
+  _target_: src.datasets.CustomDirDataset
+  path: "inference_dataset"
