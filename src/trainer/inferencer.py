@@ -149,7 +149,7 @@ class Inferencer(BaseTrainer):
 
             for met in self.metrics["inference"]:
                 value = met(**batch)
-                metrics.update(met.name, met(**batch))
+                metrics.update(met.name, value)
                 batch_metrics[met.name] = value
             if self.writer is not None:
                 self.writer.add_scalars(batch_metrics)
@@ -203,15 +203,15 @@ class Inferencer(BaseTrainer):
                 path_to_save = cur_path / cur_id
                 path_to_save.mkdir(parents=True, exist_ok=True)
 
-                torchvision.utils.save_image(back_to_hw(output["lensless"], orig_h, orig_w), path_to_save / f"lensless.png")
+                torchvision.utils.save_image(back_to_hw(output["lensless"], orig_h, orig_w), path_to_save / f"lensless_{cur_id}.png")
                 if lensed_exist:
                     lensed_orig_hw = batch["lensed_orig_hw"][i].clone()
                     lensed_orig_h, lensed_orig_w = lensed_orig_hw[0], lensed_orig_hw[1]
                     torchvision.utils.save_image(get_roi_bchw(crop_(output["lensed"], lensed_orig_h, lensed_orig_w).unsqueeze(0)).squeeze(0),
-                                                 path_to_save / f"lensed_roi.png")
+                                                 path_to_save / f"lensed_roi_{cur_id}.png")
 
                 torchvision.utils.save_image(get_roi_bchw(back_to_hw(output["reconstructed"], orig_h, orig_w).unsqueeze(0)).squeeze(0),
-                                             path_to_save / f"reconstructed_roi.png")
+                                             path_to_save / f"reconstructed_roi_{cur_id}.png")
                 if self.writer is not None and batch_idx % log_images_every == 0:
                     lensless_log = back_to_hw(output["lensless"], orig_h, orig_w)
                     lensless_log = get_log(lensless_log, True, False)

@@ -6,10 +6,10 @@ from hydra.utils import instantiate
 
 from src.datasets.data_utils import get_dataloaders
 from src.trainer import Inferencer
-from src.utils.init_utils import set_random_seed
 from src.utils.io_utils import ROOT_PATH
 from huggingface_hub import hf_hub_download
 from omegaconf import OmegaConf
+from pathlib import Path
 
 from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 
@@ -43,22 +43,49 @@ def main(config):
     else:
         writer = None
     # build model architecture, then print to console
-    model = instantiate(config.model).to(device)
-    if config.inferencer.get("model_weights") is not None:
-        check = hf_hub_download(repo_id = "maxsnytsarev/lensless_camera", filename=config.inferencer.model_weights, repo_type="model")
+
+    model_name = config.model_name
+    model_weights = {
+        "LeADMM-5-pre-post-inv": ("model_weights_le_admm_5_pre_post_inv.pth", "le_admm_5_pre_post_inv"),
+        "LeADMM-5-post-inv": ("model_weights_le_admm_5_post_inv_corr.pth", "le_admm_5_post_inv"),
+        "LeADMM-5-pre-inv": ("model_weights_le_admm_5_pre_inv_corr.pth", "le_admm_5_pre_inv"),
+        "Unrolled_ADMM-20": ("model_weights_unrolled_admm_20_corr.pth", "unrolled_admm_20"),
+    }
+
+    if model_name is None:
+        raise RuntimeError("No model name provided")
+    else:
+        if model_name == "ADMM-100":
+            weights = None
+            yaml_path = "admm_100"
+        else:
+            weights = model_weights[model_name][0]
+            yaml_path = model_weights[model_name][1]
+    config_path = ROOT_PATH / "src" / "configs" / "model" / f"{yaml_path}.yaml"
+    assert config_path.is_file(), "config file not found"
+    config_model = OmegaConf.load(config_path)
+    model = instantiate(config_model).to(device)
+    if weights is not None:
+        check = hf_hub_download(repo_id="maxsnytsarev/lensless_camera", filename=weights,
+                                repo_type="model")
         checkpoint = torch.load(check, map_location=device, weights_only=False)
         state_dict = checkpoint["state_dict"]
         model.load_state_dict(state_dict)
+        print("Loaded model weights")
     else:
         print("No weights are loaded. Using initialized model.")
-
+    print("Model is initialized")
     print(model)
 
     # get metrics
     metrics = instantiate(config.metrics)
 
     # save_path for model predictions
-    save_path = ROOT_PATH / "inference_data" / "saved" / config.inferencer.save_path
+    _path = config.inferencer.get("save_path")
+    if _path is None:
+        print("No save path provided. Using default save path. 'inference_data/saved'")
+        _path = Path("inference_data") / "saved"
+    save_path = ROOT_PATH / _path
     save_path.mkdir(exist_ok=True, parents=True)
 
     inferencer = Inferencer(

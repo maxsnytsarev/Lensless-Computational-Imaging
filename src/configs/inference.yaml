@@ -1,21 +1,17 @@
 defaults:
-  - model: lensless
   - writer: cometml
+  - datasets: digicam-test
   - metrics: image_metrics
   - dataloader: inference
   - _self_
+
+model_name: "LeADMM-5-pre-post-inv"
 
 inferencer:
   device_tensors: ["lensless", "psf"]
   device: auto
   save_path: "inference_save"
   seed: 1
-  model_weights: "model_weights_le_admm_pre_pro_inv.pth"
-
-datasets:
-  inference:
-    _target_: src.datasets.CustomDirDataset
-    path: inference_dataset
 
 transforms:
   instance_transforms: {}
