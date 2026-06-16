@@ -16,3 +16,4 @@ hydra-core
 omegaconf
 comet-ml
 lpips
+gdown
