@@ -3,6 +3,7 @@ import warnings
 import hydra
 import torch
 from hydra.utils import instantiate
+import logging
 
 from src.datasets.data_utils import get_dataloaders
 from src.trainer import Inferencer
@@ -36,13 +37,13 @@ def main(config):
     # setup data_loader instances
     # batch_transforms should be put on device
     dataloaders, batch_transforms = get_dataloaders(config, device)
-    project_config = OmegaConf.to_container(config)
-    logger = setup_saving_and_logging(config)
-    if config.writer is not None:
+    if config.writer.get("run_name") is not None:
+        project_config = OmegaConf.to_container(config)
+        logger = setup_saving_and_logging(config)
         writer = instantiate(config.writer, logger, project_config)
     else:
+        logger = logging.getLogger("inference")
         writer = None
-    # build model architecture, then print to console
 
     model_name = config.model_name
     model_weights = {
@@ -59,6 +60,8 @@ def main(config):
             weights = None
             yaml_path = "admm_100"
         else:
+            if model_name not in model_weights:
+                raise RuntimeError("Unknown model name")
             weights = model_weights[model_name][0]
             yaml_path = model_weights[model_name][1]
     config_path = ROOT_PATH / "src" / "configs" / "model" / f"{yaml_path}.yaml"
