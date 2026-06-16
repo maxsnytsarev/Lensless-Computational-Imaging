@@ -47,7 +47,7 @@ def main(config):
 
     model_name = config.model_name
     model_weights = {
-        "LeADMM-5-pre-post-inv": ("model_weights_le_admm_5_pre_post_inv.pth", "le_admm_5_pre_post_inv"),
+        "LeADMM-5-pre-post-inv": ("model_weights_8m_le_admm_5_pre_post_inv.pth", "le_admm_5_pre_post_inv"),
         "LeADMM-5-post-inv": ("model_weights_le_admm_5_post_inv_corr.pth", "le_admm_5_post_inv"),
         "LeADMM-5-pre-inv": ("model_weights_le_admm_5_pre_inv_corr.pth", "le_admm_5_pre_inv"),
         "Unrolled_ADMM-20": ("model_weights_unrolled_admm_20_corr.pth", "unrolled_admm_20"),

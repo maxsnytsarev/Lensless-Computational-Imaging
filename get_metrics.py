@@ -107,10 +107,9 @@ def main(config):
 
             lpips_sum += lpips_metric(cur_lensed, cur_reconstructed).item()
 
-
             psnr += psnr_metric(cur_lensed_np[0], cur_reconstructed_np[0], data_range=1.0)
 
-            ssim += ssim_metric(2 * cur_lensed_np[0]-1, 2*cur_reconstructed_np[0]-1, data_range=1.0, channel_axis=-1)
+            ssim += ssim_metric(2 * cur_lensed_np[0]-1, 2*cur_reconstructed_np[0]-1, data_range=2.0, channel_axis=-1)
 
     mse /= cnt
     lpips_sum /= cnt
