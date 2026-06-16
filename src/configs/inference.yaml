@@ -16,3 +16,8 @@ inferencer:
 transforms:
   instance_transforms: {}
   batch_transforms: {}
+
+trainer:
+  save_dir: saved
+  resume_from: null
+  override: true

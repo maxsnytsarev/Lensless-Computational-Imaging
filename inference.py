@@ -75,7 +75,6 @@ def main(config):
     else:
         print("No weights are loaded. Using initialized model.")
     print("Model is initialized")
-    print(model)
 
     # get metrics
     metrics = instantiate(config.metrics)

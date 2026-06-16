@@ -101,6 +101,7 @@ class BaseDataset(Dataset):
                 instance_data["lensed"] = to_shape(my_lensed)
                 instance_data["lensless"] = to_shape(my_lensless)
                 instance_data["psf"] = self.mask_cashe[m_label][1]
+            instance_data["id"] = f"ID{ind}"
             instance_data = self.preprocess_data(instance_data)
         elif self.mode == "inference":
             cur_id = data_dict["id"]

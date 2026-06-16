@@ -44,7 +44,8 @@ class FullModel(nn.Module):
             self.post_process = None
 
     def forward(self, lensless, psf, **batch):
-        psf = psf_correction(psf)
+        if self.mode != (True, True):
+            psf = psf_correction(psf)
         if self.mode[0]:
             lensless = pad_(lensless)
             lensless = self.pre_process(lensless)

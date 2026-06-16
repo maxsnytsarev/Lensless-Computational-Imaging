@@ -61,16 +61,16 @@ class CustomDirDataset(BaseDataset):
 
         lensed_exists = lensed_path.exists()
 
-        all_lensless_files = list(lensless_path.iterdir())
-        all_mask_files = list(masks_path.iterdir())
+        all_lensless_files = sorted(list(lensless_path.iterdir()))
+        all_mask_files = sorted(list(masks_path.iterdir()))
         if lensed_exists:
-            all_lensed_files = list(lensed_path.iterdir())
+            all_lensed_files = sorted(list(lensed_path.iterdir()))
         else:
             all_lensed_files = [None] * len(all_lensless_files)
 
         ids = dict()
         def put_path_in_id(path, name):
-            cur_id = int(str(path.stem)[7:])
+            cur_id = str(path.stem)[5:]
             if cur_id not in ids:
                 ids[cur_id] = dict()
                 ids[cur_id][name] = path
@@ -95,14 +95,14 @@ class CustomDirDataset(BaseDataset):
             assert "mask" in ids[cur_id]
             if "lensed" in ids[cur_id]:
                 index.append({
-                    "id": f"ImageID{cur_id}",
+                    "id": cur_id,
                     "lensless": str(ids[cur_id]["lensless"]),
                     "mask": str(ids[cur_id]["mask"]),
                     "lensed": str(ids[cur_id]["lensed"]),
                 })
             else:
                 index.append({
-                    "id": f"ImageID{cur_id}",
+                    "id": cur_id,
                     "lensless": str(ids[cur_id]["lensless"]),
                     "mask": str(ids[cur_id]["mask"]),
                     "lensed": None,

@@ -67,13 +67,6 @@ def collate_fn(dataset_items: list[dict]):
         result_batch["lensed"] = torch.stack(
             [pad_(elem["lensed"], H_max, W_max) for elem in dataset_items], dim=0
         )
-    if "id" not in dataset_items[0]:
-        result_batch["lensed"] = torch.stack(
-            [elem["lensed"] for elem in dataset_items], dim=0
-        )
-    if "id" in dataset_items[0]:
+    result_batch["id"] = [elem["id"] for elem in dataset_items]
 
-        result_batch["id"] = [elem["id"] for elem in dataset_items]
-    else:
-        result_batch["id"] = [f"ImageID{i}" for i in range(len(dataset_items))]
     return result_batch

@@ -34,7 +34,7 @@ def main(config):
     """
     set_random_seed(config.metrics_info.seed)
 
-    if config.inferencer.device == "auto":
+    if config.metrics_info.device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
     else:
         device = config.metrics_info.device
@@ -93,6 +93,7 @@ def main(config):
         return img
 
     with torch.no_grad():
+        lpips_metric = lpips.LPIPS(net="vgg").to(device)
         for i in tqdm(range(cnt)):
             cur_lensed = batch_lensed[i] / 255.0
             cur_reconstructed = batch_reconstructed[i] / 255.0
@@ -104,7 +105,6 @@ def main(config):
 
             mse += nn.MSELoss()(cur_lensed, cur_reconstructed).item()
 
-            lpips_metric = lpips.LPIPS(net="vgg").to(device)
             lpips_sum += lpips_metric(cur_lensed, cur_reconstructed).item()
 
 
