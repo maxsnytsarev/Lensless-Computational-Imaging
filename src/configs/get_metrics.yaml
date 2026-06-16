@@ -1,0 +1,16 @@
+defaults:
+  - writer: cometml
+  - _self_
+
+metrics_info:
+  metrics_path: inference_save
+  device: auto
+  seed: 1
+
+writer:
+  run_name: "metrics"
+
+trainer:
+  save_dir: saved
+  resume_from: null
+  override: true
