@@ -86,19 +86,17 @@ class Trainer(BaseTrainer):
         # logging scheme might be different for different partitions
         if mode == "train":  # the method is called only every self.log_step steps
             lensless, lensed, reconstructed, psf, lensed_roi, reconstructed_roi = get_log(batch)
-            if self.writer is not None:
-                self.writer.add_image(f"{mode}/lensless", lensless)
-                self.writer.add_image(f"{mode}/lensed", lensed)
-                self.writer.add_image(f"{mode}/reconstructed", reconstructed)
-                self.writer.add_image(f"{mode}/PSF", psf)
-                self.writer.add_image(f"{mode}/lensed_roi", lensed_roi)
-                self.writer.add_image(f"{mode}/reconstructed_roi", reconstructed_roi)
+            self.writer.add_image(f"{mode}/lensless", lensless)
+            self.writer.add_image(f"{mode}/lensed", lensed)
+            self.writer.add_image(f"{mode}/reconstructed", reconstructed)
+            self.writer.add_image(f"{mode}/PSF", psf)
+            self.writer.add_image(f"{mode}/lensed_roi", lensed_roi)
+            self.writer.add_image(f"{mode}/reconstructed_roi", reconstructed_roi)
         else:
             lensless, lensed, reconstructed, psf, lensed_roi, reconstructed_roi = get_log(batch)
-            if self.writer is not None:
-                self.writer.add_image(f"{mode}/lensless", lensless)
-                self.writer.add_image(f"{mode}/lensed", lensed)
-                self.writer.add_image(f"{mode}/reconstructed", reconstructed)
-                self.writer.add_image(f"{mode}/PSF", psf)
-                self.writer.add_image(f"{mode}/lensed_roi", lensed_roi)
-                self.writer.add_image(f"{mode}/reconstructed_roi", reconstructed_roi)
+            self.writer.add_image(f"{mode}/lensless", lensless)
+            self.writer.add_image(f"{mode}/lensed", lensed)
+            self.writer.add_image(f"{mode}/reconstructed", reconstructed)
+            self.writer.add_image(f"{mode}/PSF", psf)
+            self.writer.add_image(f"{mode}/lensed_roi", lensed_roi)
+            self.writer.add_image(f"{mode}/reconstructed_roi", reconstructed_roi)
