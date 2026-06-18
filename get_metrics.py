@@ -10,7 +10,7 @@ from src.utils.init_utils import set_random_seed
 from src.utils.io_utils import ROOT_PATH
 from huggingface_hub import hf_hub_download
 from omegaconf import OmegaConf
-
+import logging
 from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 from src.metrics.image_metrics import *
 import torchvision.io as tv_io
@@ -42,10 +42,12 @@ def main(config):
     # setup data_loader instances
     # batch_transforms should be put on device
     project_config = OmegaConf.to_container(config)
-    logger = setup_saving_and_logging(config)
-    if config.writer is not None:
+    if config.writer.get("run_name") is not None:
+        project_config = OmegaConf.to_container(config)
+        logger = setup_saving_and_logging(config)
         writer = instantiate(config.writer, logger, project_config)
     else:
+        logger = logging.getLogger("get_metrics")
         writer = None
     # build model architecture, then print to console
 
