@@ -8,6 +8,7 @@ defaults:
 model_name: "LeADMM-5-pre-post-inv"
 
 inferencer:
+  eval_time: false
   device_tensors: ["lensless", "psf"]
   device: auto
   save_path: "inference_save"

@@ -11,6 +11,7 @@ from src.utils.io_utils import ROOT_PATH
 from huggingface_hub import hf_hub_download
 from omegaconf import OmegaConf
 from pathlib import Path
+import time
 
 from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 
@@ -101,9 +102,34 @@ def main(config):
         writer=writer,
         skip_model_load=True,
     )
+    if config.inferencer.get("eval_time") == True:
+        dataloader = next(iter(dataloaders.values()))
+        batch = next(iter(dataloader))
+        batch = inferencer.move_batch_to_device(batch)
+        warmup = 3
+        runs = 10
+        batch_size = batch["lensless"].shape[0]
+        print("Started time evaluation")
+        model.eval()
+        with torch.no_grad():
+            for i in range(warmup):
+                model(**batch)
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            start = time.perf_counter()
+            for i in range(runs):
+                model(**batch)
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+        total_time = time.perf_counter() - start
+        time_ms = 1000 * total_time / (runs * batch_size)
+        print(f"Total time: {time_ms} ms/image")
+
+        if writer is not None:
+            writer.set_step(0, "speed")
+            writer.add_scalar("Average time (ms)", time_ms)
 
     logs = inferencer.run_inference()
-
     for part in logs.keys():
         for key, value in logs[part].items():
             full_key = part + "_" + key
