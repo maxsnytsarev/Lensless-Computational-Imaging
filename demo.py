@@ -22,10 +22,19 @@ def show_result(path_to_dataset, max_images=3):
     dirs = sorted(list(path_to_dataset.iterdir()), key=lambda x: int(x.name.removeprefix("ID")))[:max_images]
     if not dirs:
         raise RuntimeError(f"No directories found in {path_to_dataset}")
+
+    lensed_path = dirs[0] / f"lensed_roi_{dirs[0].name}.png"
+    lensed_exist = False
+    if lensed_path.exists():
+        n_rows = 2
+        lensed_exist = True
+    else:
+        n_rows = 1
+        print("No ground-truth images found")
     fig, axes = plt.subplots(
-        1,
+        n_rows,
         len(dirs),
-        figsize=(5 * len(dirs), 5),
+        figsize=(5 * len(dirs), 5 * n_rows),
         squeeze=False,
     )
     for i in range(len(dirs)):
@@ -34,9 +43,20 @@ def show_result(path_to_dataset, max_images=3):
         reconstructed_path = cur_dir / f"reconstructed_roi_{cur_name}.png"
         if not reconstructed_path.is_file():
             raise FileNotFoundError(f"Reconstruction not found in {reconstructed_path}")
+        if lensed_exist:
+            lensed_path = cur_dir / f"lensed_roi_{cur_name}.png"
+            if not lensed_path.is_file():
+                raise FileNotFoundError(f"Ground truth not found in {lensed_path}")
+            lensed_image = Image.open(lensed_path).convert("RGB")
+            axes[0, i].imshow(lensed_image)
+            axes[0, i].set_title(f"Ground truth {cur_name}")
+            axes[0, i].axis("off")
+            rec_axis = axes[1, i]
+        else:
+            rec_axis = axes[0, i]
         image = Image.open(reconstructed_path).convert("RGB")
-        axes[0, i].imshow(image)
-        axes[0, i].set_title(cur_name)
-        axes[0, i].axis("off")
+        rec_axis.imshow(image)
+        rec_axis.set_title(f"Reconstructed {cur_name}")
+        rec_axis.axis("off")
     plt.tight_layout()
     plt.show()
